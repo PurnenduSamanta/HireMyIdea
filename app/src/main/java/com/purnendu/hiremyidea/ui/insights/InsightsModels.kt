@@ -2,6 +2,9 @@ package com.purnendu.hiremyidea.ui.insights
 
 import androidx.compose.ui.graphics.Color
 import com.purnendu.hiremyidea.ui.theme.InsightsColors
+import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
 
 // High-level screen state
 
@@ -22,7 +25,7 @@ data class StabilitySummaryData(
 )
 
 data class StabilityChartData(
-    val yLabels: List<String>,
+    val yAxisUnit: String = "d",
     val xLabels: List<String>,
     val points: List<Float>,
     val markerIndex: Int,
@@ -78,15 +81,23 @@ data class Segment(val label: String, val value: Float, val color: Color)
 // Default sample data
 
 object InsightsSampleData {
+    // Generate 4 months: 2 before current, current, 1 after
+    private val currentDate = LocalDate.now()
+    private val recentMonths = (-2..1).map { offset ->
+        currentDate.plusMonths(offset.toLong())
+            .month
+            .getDisplayName(TextStyle.SHORT, Locale.getDefault())
+    }
+
     val state = InsightsUiState(
         stability = StabilitySummaryData(
             summary = "Based on your recent logs and symptom\npatterns.",
             scoreText = "78%",
             chart = StabilityChartData(
-                yLabels = listOf("32d", "28d", "24d"),
-                xLabels = listOf("Jan", "Feb", "Mar", "Apr"),
+                yAxisUnit = "d",
+                xLabels = recentMonths,
                 points = listOf(22f, 26f, 30f, 34f),
-                markerIndex = 2,
+                markerIndex = 2, // Current month is at index 2 (3rd position)
                 trendLabel = "Stability\nImproving"
             )
         ),
