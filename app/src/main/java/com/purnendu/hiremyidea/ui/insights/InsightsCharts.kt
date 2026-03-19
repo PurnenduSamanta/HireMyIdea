@@ -273,36 +273,57 @@ fun WeightChart(
     data: WeightChartData,
     modifier: Modifier = Modifier
 ) {
-    Box(modifier = modifier) {
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
+    val leftPadding = 28.dp
+    val rightPadding = 8.dp
+    val topPadding = 8.dp
+    val bottomPadding = 20.dp
+    val topRange = 0.15f
+    val bottomRange = 0.85f
+
+    val density = LocalDensity.current
+
+    // Auto-generate Y labels from actual data (same approach as StabilityChart)
+    val dataMax = data.points.maxOrNull() ?: 0f
+    val dataMin = data.points.minOrNull() ?: 0f
+    val dataMid = (dataMax + dataMin) / 2f
+    val autoYLabels = listOf(
+        "${dataMax.toInt()}",
+        "${dataMid.toInt()}",
+        "${dataMin.toInt()}"
+    )
+
+    val yLabelFractions = listOf(topRange, (topRange + bottomRange) / 2f, bottomRange)
+
+    // Approximate text line height for Y labels to center them on grid lines
+    val yLabelLineHeight = with(density) { 10.sp.toDp() }
+
+    Box(modifier = modifier.onSizeChanged { containerSize = it }) {
         Canvas(modifier = Modifier.matchParentSize()) {
-            val left = 28.dp.toPx()
-            val right = 8.dp.toPx()
-            val top = 8.dp.toPx()
-            val bottom = 20.dp.toPx()
-            val width = size.width - left - right
-            val height = size.height - top - bottom
-            val gridCount = data.yLabels.size.coerceAtLeast(3)
-            val gridY = (0 until gridCount).map { index ->
-                0.1f + (0.75f * index / (gridCount - 1).toFloat())
-            }
-            gridY.forEach { y ->
+            val chartLeft = leftPadding.toPx()
+            val chartWidth = size.width - leftPadding.toPx() - rightPadding.toPx()
+            val chartHeight = size.height - topPadding.toPx() - bottomPadding.toPx()
+
+            // Draw dashed horizontal grid lines at each Y label position
+            yLabelFractions.forEach { fraction ->
+                val y = topPadding.toPx() + chartHeight * fraction
                 drawLine(
                     color = InsightsColors.GreyLine,
-                    start = Offset(left, top + height * y),
-                    end = Offset(left + width, top + height * y),
+                    strokeWidth = 1.dp.toPx(),
+                    start = Offset(chartLeft, y),
+                    end = Offset(chartLeft + chartWidth, y),
                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
                 )
             }
+
             val normalized = normalizeValues(data.points)
-            val topRange = 0.15f
-            val bottomRange = 0.85f
             val points = normalized.mapIndexed { index, value ->
                 val x = if (normalized.size == 1) {
-                    left + width / 2f
+                    chartLeft + chartWidth / 2f
                 } else {
-                    left + width * (index / (normalized.size - 1).toFloat())
+                    chartLeft + chartWidth * (index / (normalized.size - 1).toFloat())
                 }
-                val y = top + height * (bottomRange - value * (bottomRange - topRange))
+                val y = topPadding.toPx() + chartHeight * (bottomRange - value * (bottomRange - topRange))
                 Offset(x, y)
             }
 
@@ -318,8 +339,8 @@ fun WeightChart(
 
             val fillPath = Path().apply {
                 addPath(linePath)
-                lineTo(points.last().x, top + height)
-                lineTo(points.first().x, top + height)
+                lineTo(points.last().x, topPadding.toPx() + chartHeight)
+                lineTo(points.first().x, topPadding.toPx() + chartHeight)
                 close()
             }
 
@@ -327,8 +348,8 @@ fun WeightChart(
                 fillPath,
                 brush = Brush.verticalGradient(
                     colors = listOf(InsightsColors.Pink.copy(alpha = 0.35f), Color.Transparent),
-                    startY = top,
-                    endY = top + height
+                    startY = topPadding.toPx(),
+                    endY = topPadding.toPx() + chartHeight
                 )
             )
             drawPath(
@@ -337,33 +358,51 @@ fun WeightChart(
                 style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
             )
 
-            points.drop(1).dropLast(1).forEach { point ->
+            points.forEach { point ->
                 drawCircle(color = Color.White, radius = 4.dp.toPx(), center = point)
                 drawCircle(color = InsightsColors.Pink, radius = 4.dp.toPx(), center = point, style = Stroke(width = 1.5.dp.toPx()))
             }
         }
 
-        Column(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 4.dp, top = 6.dp, bottom = 22.dp)
-                .height(90.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            data.yLabels.forEach { label ->
-                Text(label, style = InsightsTypography.Axis)
+        // Y labels — each positioned so its vertical center aligns with the dashed grid line
+        Box(modifier = Modifier.matchParentSize()) {
+            autoYLabels.forEachIndexed { index, label ->
+                val fraction = yLabelFractions[index]
+                val offsetY = with(density) {
+                    val chartHeightPx = containerSize.height - topPadding.toPx() - bottomPadding.toPx()
+                    val yPx = topPadding.toPx() + chartHeightPx * fraction
+                    yPx.toDp() - yLabelLineHeight / 2
+                }
+                Text(
+                    text = label,
+                    style = InsightsTypography.Axis,
+                    modifier = Modifier.offset(y = offsetY)
+                )
             }
         }
 
-        Row(
+        // X labels — each positioned directly below its data point
+        Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 28.dp, end = 8.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+                .fillMaxWidth()
         ) {
-            data.xLabels.forEach { label ->
-                Text(label, style = InsightsTypography.Axis)
+            val pointCount = data.points.size.coerceAtLeast(2)
+            data.xLabels.forEachIndexed { index, label ->
+                val fraction = index / (pointCount - 1).toFloat()
+                val offsetX = with(density) {
+                    val chartLeftPx = leftPadding.toPx()
+                    val chartRightPx = rightPadding.toPx()
+                    val chartWidthPx = containerSize.width - chartLeftPx - chartRightPx
+                    val xPx = chartLeftPx + chartWidthPx * fraction
+                    xPx.toDp()
+                }
+                Text(
+                    text = label,
+                    style = InsightsTypography.Axis,
+                    modifier = Modifier.offset(x = offsetX),
+                    textAlign = TextAlign.Center
+                )
             }
         }
     }

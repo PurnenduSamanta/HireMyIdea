@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -31,6 +33,8 @@ import com.purnendu.hiremyidea.ui.theme.InsightsColors
 @Composable
 fun InsightsScreen(state: InsightsUiState = InsightsSampleData.state) {
     val scrollState = rememberScrollState()
+
+    val isMonthlySelected = remember { mutableStateOf(true) }
 
     Box(modifier = Modifier.fillMaxSize().background(InsightsColors.Background)) {
         Canvas(modifier = Modifier.matchParentSize()) {
@@ -90,7 +94,7 @@ fun InsightsScreen(state: InsightsUiState = InsightsSampleData.state) {
             Spacer(modifier = Modifier.height(20.dp))
             SectionTitle("Body & Metabolic Trends")
             Spacer(modifier = Modifier.height(12.dp))
-            BodyMetabolicCard(state.weight)
+            BodyMetabolicCard(state.weight, isMonthlySelected = isMonthlySelected.value,onChangeOfMonthlySelected = {isMonthlySelected.value=true},onChangeOfWeeklySelected = {isMonthlySelected.value=false})
 
             Spacer(modifier = Modifier.height(20.dp))
             SectionTitle("Body Signals")

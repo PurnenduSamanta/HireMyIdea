@@ -30,7 +30,9 @@ fun StabilityCard(data: StabilitySummaryData) {
         Text(text = "Stability Score", style = InsightsTypography.Body)
         Text(text = data.scoreText, style = InsightsTypography.Score)
         Spacer(modifier = Modifier.height(12.dp))
-        StabilityChart(data = data.chart, modifier = Modifier.fillMaxWidth().height(150.dp))
+        StabilityChart(data = data.chart, modifier = Modifier
+            .fillMaxWidth()
+            .height(150.dp))
     }
 }
 
@@ -60,19 +62,33 @@ fun CycleTrendsCard(data: CycleTrendsData) {
 }
 
 @Composable
-fun BodyMetabolicCard(data: WeightTrendsData) {
+fun BodyMetabolicCard(
+    data: WeightTrendsData,
+    isMonthlySelected: Boolean,
+    onChangeOfMonthlySelected: () -> Unit,
+    onChangeOfWeeklySelected: () -> Unit
+) {
     CardContainer {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = data.title, style = InsightsTypography.Body)
                 Text(text = data.subtitle, style = InsightsTypography.BodyMuted)
             }
-            TogglePill(text = "Monthly", selected = data.isMonthlySelected,{})
+            TogglePill(
+                text = "Monthly",
+                selected = isMonthlySelected,
+                onClick = { onChangeOfMonthlySelected() })
             Spacer(modifier = Modifier.width(6.dp))
-            TogglePill(text = "Weekly", selected = !data.isMonthlySelected,{})
+            TogglePill(
+                text = "Weekly",
+                selected = !isMonthlySelected,
+                { onChangeOfWeeklySelected() })
         }
         Spacer(modifier = Modifier.height(14.dp))
-        WeightChart(data = data.chart, modifier = Modifier.fillMaxWidth().height(150.dp))
+        val chartData = if (isMonthlySelected) data.monthlyChart else data.weeklyChart
+        WeightChart(data = chartData, modifier = Modifier
+            .fillMaxWidth()
+            .height(150.dp))
     }
 }
 
@@ -82,7 +98,9 @@ fun BodySignalsCard(data: BodySignalsData) {
         Text(text = data.title, style = InsightsTypography.Body)
         Text(text = data.subtitle, style = InsightsTypography.BodyMuted)
         Spacer(modifier = Modifier.height(16.dp))
-        SymptomDonut(data = data, modifier = Modifier.fillMaxWidth().height(240.dp))
+        SymptomDonut(data = data, modifier = Modifier
+            .fillMaxWidth()
+            .height(240.dp))
     }
 }
 

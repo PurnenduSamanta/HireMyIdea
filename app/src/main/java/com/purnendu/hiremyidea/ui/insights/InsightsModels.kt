@@ -1,10 +1,14 @@
 package com.purnendu.hiremyidea.ui.insights
 
 import androidx.compose.ui.graphics.Color
+import com.purnendu.hiremyidea.ui.insights.InsightsSampleData.currentDate
 import com.purnendu.hiremyidea.ui.theme.InsightsColors
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.TextStyle
+import java.time.temporal.TemporalAdjusters
 import java.util.Locale
+import kotlin.collections.map
 
 // High-level screen state
 
@@ -44,12 +48,11 @@ data class CycleTrendsData(
 data class WeightTrendsData(
     val title: String,
     val subtitle: String,
-    val isMonthlySelected: Boolean,
-    val chart: WeightChartData
+    val monthlyChart: WeightChartData,
+    val weeklyChart: WeightChartData
 )
 
 data class WeightChartData(
-    val yLabels: List<String>,
     val xLabels: List<String>,
     val points: List<Float>
 )
@@ -83,10 +86,20 @@ data class Segment(val label: String, val value: Float, val color: Color)
 object InsightsSampleData {
     // Generate 4 months: 2 before current, current, 1 after
     private val currentDate = LocalDate.now()
-    private val recentMonths = (-2..1).map { offset ->
+    private fun recentMonths(lowerIndex:Int,upperIndex:Int):List<String> {
+        return (lowerIndex..upperIndex).map { offset ->
         currentDate.plusMonths(offset.toLong())
             .month
-            .getDisplayName(TextStyle.SHORT, Locale.getDefault())
+            .getDisplayName(TextStyle.SHORT, Locale.getDefault()) }
+    }
+
+    private fun currentWeekDays(): List<String> {
+        val startOfWeek = currentDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        return (0L..6L).map { offset ->
+            startOfWeek.plusDays(offset)
+                .dayOfWeek
+                .getDisplayName(TextStyle.SHORT, Locale.getDefault())
+        }
     }
 
     val state = InsightsUiState(
@@ -95,7 +108,7 @@ object InsightsSampleData {
             scoreText = "78%",
             chart = StabilityChartData(
                 yAxisUnit = "d",
-                xLabels = recentMonths,
+                xLabels = recentMonths(-2,1),
                 points = listOf(24f, 25f, 26.5f, 28.5f),
                 markerIndex = 2, // Current month is at index 2 (3rd position)
                 trendLabel = "Stability\nImproving"
@@ -108,11 +121,13 @@ object InsightsSampleData {
         weight = WeightTrendsData(
             title = "Your weight",
             subtitle = "in kg",
-            isMonthlySelected = true,
-            chart = WeightChartData(
-                yLabels = listOf("75", "50", "25"),
-                xLabels = listOf("Jan", "Feb", "Mar", "Apr", "May"),
-                points = listOf(35f, 48f, 40f, 72f, 55f, 52f)
+            monthlyChart = WeightChartData(
+                xLabels = recentMonths(-2, 2),
+                points = listOf(35f, 48f, 40f, 72f, 55f)
+            ),
+            weeklyChart = WeightChartData(
+                xLabels = currentWeekDays(),
+                points = listOf(52f, 51f, 53f, 50f, 54f, 52f, 51f)
             )
         ),
         signals = BodySignalsData(
