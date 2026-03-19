@@ -96,7 +96,7 @@ object InsightsSampleData {
             chart = StabilityChartData(
                 yAxisUnit = "d",
                 xLabels = recentMonths,
-                points = listOf(22f, 26f, 30f, 34f),
+                points = listOf(24f, 25f, 26.5f, 28.5f),
                 markerIndex = 2, // Current month is at index 2 (3rd position)
                 trendLabel = "Stability\nImproving"
             )

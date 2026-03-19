@@ -24,9 +24,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -44,6 +44,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import com.purnendu.hiremyidea.ui.theme.InsightsColors
 import com.purnendu.hiremyidea.ui.theme.InsightsTypography
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 @Composable
 fun StabilityChart(
@@ -59,7 +61,7 @@ fun StabilityChart(
     val topPadding = 10.dp
     val bottomPadding = 22.dp
     val topRange = 0.15f
-    val bottomRange = 0.85f
+    val bottomRange = 1.0f
     val safeMarkerIndex = data.markerIndex.coerceIn(0, (data.points.size - 1).coerceAtLeast(0))
     val pointCount = data.points.size.coerceAtLeast(2)
     val markerFraction = safeMarkerIndex / (pointCount - 1).toFloat()
@@ -111,25 +113,48 @@ fun StabilityChart(
             val chartBottom = size.height - bottomPadding.toPx()
             val chartWidth = chartRight - chartLeft
             val chartHeight = chartBottom - chartTop
-            val normalized = normalizeValues(data.points)
-            val points = normalized.mapIndexed { index, value ->
-                val x = if (normalized.size == 1) {
+            val range = (dataMax - dataMin).takeIf { it > 0f } ?: 1f
+            val points = data.points.mapIndexed { index, rawValue ->
+                val value = (rawValue - dataMin) / range
+                val x = if (data.points.size == 1) {
                     chartLeft + chartWidth / 2f
                 } else {
-                    chartLeft + chartWidth * (index / (normalized.size - 1).toFloat())
+                    chartLeft + chartWidth * (index / (data.points.size - 1).toFloat())
                 }
                 val y = chartTop + chartHeight * (bottomRange - value * (bottomRange - topRange))
                 Offset(x, y)
             }
 
+            // Draw visible axis lines representing the L-shaped origin graph as requested
+            drawLine(
+                color = InsightsColors.Muted.copy(alpha = 0.5f),
+                start = Offset(chartLeft, chartTop),
+                end = Offset(chartLeft, chartBottom),
+                strokeWidth = 1.dp.toPx()
+            )
+            drawLine(
+                color = InsightsColors.Muted.copy(alpha = 0.5f),
+                start = Offset(chartLeft, chartBottom),
+                end = Offset(chartRight, chartBottom),
+                strokeWidth = 1.dp.toPx()
+            )
+
             // --- Light purple filled wave (areaPath) ---
             val areaLinePath = Path().apply {
                 moveTo(points.first().x, points.first().y)
+                val tension = 0.20f
                 for (i in 1 until points.size) {
-                    val prev = points[i - 1]
-                    val current = points[i]
-                    val midX = (prev.x + current.x) / 2
-                    cubicTo(midX, prev.y, midX, current.y, current.x, current.y)
+                    val p0 = points[(i - 2).coerceAtLeast(0)]
+                    val p1 = points[i - 1]
+                    val p2 = points[i]
+                    val p3 = points[(i + 1).coerceAtMost(points.size - 1)]
+
+                    val cp1x = p1.x + (p2.x - p0.x) * tension
+                    val cp1y = p1.y + (p2.y - p0.y) * tension
+                    val cp2x = p2.x - (p3.x - p1.x) * tension
+                    val cp2y = p2.y - (p3.y - p1.y) * tension
+
+                    cubicTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y)
                 }
             }
             val areaPath = Path().apply {
@@ -146,20 +171,28 @@ fun StabilityChart(
                 // to create the layered depth effect
                 val overlayPoints = points.mapIndexed { index, point ->
                     val fraction = index / (points.size - 1).toFloat().coerceAtLeast(1f)
-                    val yOffset = chartHeight * (0.06f + fraction * 0.10f)
+                    val yOffset = chartHeight * (0.06f + fraction * 0.1f)
                     Offset(point.x, (point.y + yOffset).coerceAtMost(chartBottom))
                 }
                 moveTo(overlayPoints.first().x, overlayPoints.first().y)
+                val tension = 0.20f
                 for (i in 1 until overlayPoints.size) {
-                    val prev = overlayPoints[i - 1]
-                    val current = overlayPoints[i]
-                    val midX = (prev.x + current.x) / 2
-                    cubicTo(midX, prev.y, midX, current.y, current.x, current.y)
+                    val p0 = overlayPoints[(i - 2).coerceAtLeast(0)]
+                    val p1 = overlayPoints[i - 1]
+                    val p2 = overlayPoints[i]
+                    val p3 = overlayPoints[(i + 1).coerceAtMost(overlayPoints.size - 1)]
+
+                    val cp1x = p1.x + (p2.x - p0.x) * tension
+                    val cp1y = p1.y + (p2.y - p0.y) * tension
+                    val cp2x = p2.x - (p3.x - p1.x) * tension
+                    val cp2y = p2.y - (p3.y - p1.y) * tension
+
+                    cubicTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y)
                 }
             }
             val overlayPath = Path().apply {
                 addPath(overlayLinePath)
-                lineTo(points.last().x, chartBottom)
+                lineTo(points.last().x, chartBottom-(chartHeight*0.30f))
                 lineTo(points.first().x, chartBottom)
                 close()
             }
@@ -168,13 +201,18 @@ fun StabilityChart(
             val safeIndex = data.markerIndex.coerceIn(0, (points.size - 1).coerceAtLeast(0))
             val markerX = points.getOrNull(safeIndex)?.x ?: (chartLeft + chartWidth / 2f)
             val markerY = points.getOrNull(safeIndex)?.y ?: (chartTop + chartHeight / 2f)
+
+            val distanceBetweenMiddlePortionOfBubbleToDataPoint= sqrt((markerX - (bubbleOffsetX.toPx()+(bubbleWidth.toPx()/2))).pow(2) + (markerY - (bubbleOffsetY.toPx()+bubbleHeight.toPx())).pow(2))
+            val markerCircleOffsetY = markerY-(distanceBetweenMiddlePortionOfBubbleToDataPoint/2)
+            drawCircle(color = InsightsColors.Green, radius = 4.5.dp.toPx(), center = Offset(markerX,markerCircleOffsetY ))
+
             drawLine(
                 color = InsightsColors.Muted.copy(alpha = 0.6f),
-                start = Offset(markerX, chartTop + 8.dp.toPx()),
-                end = Offset(markerX, chartBottom - 6.dp.toPx()),
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
+                strokeWidth = 5f,
+                start = Offset(markerX, markerCircleOffsetY+10.dp.toPx()),
+                end = Offset(markerX, chartBottom),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
             )
-            drawCircle(color = InsightsColors.Green, radius = 4.5.dp.toPx(), center = Offset(markerX, markerY))
         }
 
         Column(
@@ -203,10 +241,21 @@ fun StabilityChart(
             }
         }
 
+        val sizeOfTipPortionOfBubble = 8.dp
         Box(
             modifier = Modifier
                 .offset(x = bubbleOffsetX, y = bubbleOffsetY)
                 .size(width = bubbleWidth, height = bubbleHeight)
+                .drawBehind{
+                    val tipSize = sizeOfTipPortionOfBubble.toPx()
+                    val path = Path().apply {
+                        moveTo(size.width / 2 - tipSize, size.height)
+                        lineTo(size.width / 2, size.height + tipSize)
+                        lineTo(size.width / 2 + tipSize, size.height)
+                        close()
+                    }
+                    drawPath(path, color = Color.Black)
+                }
                 .background(Color.Black, RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center
         ) {
