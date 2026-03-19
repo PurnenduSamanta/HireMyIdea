@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -429,7 +430,7 @@ private fun SymptomBubble(text: String, offsetX: Dp, offsetY: Dp) {
 fun CycleBar(month: String, value: Int) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value.toString(), style = InsightsTypography.AxisBold)
-        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Box(
             modifier = Modifier
                 .height(120.dp)
@@ -474,7 +475,7 @@ fun CycleBar(month: String, value: Int) {
                     .border(1.dp, InsightsColors.Pink, CircleShape)
             )
         }
-        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         Text(month, style = InsightsTypography.Axis)
     }
 }

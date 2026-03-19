@@ -2,6 +2,7 @@ package com.purnendu.hiremyidea.ui.insights
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,15 +49,16 @@ fun CardContainer(
 }
 
 @Composable
-fun TogglePill(text: String, selected: Boolean) {
+fun TogglePill(text: String, selected: Boolean,onClick:()->Unit) {
     Box(
         modifier = Modifier
-            .height(28.dp)
-            .background(if (selected) Color.Black else InsightsColors.Chip, RoundedCornerShape(14.dp))
+            .background(if (selected) Color.Black else InsightsColors.Chip, RoundedCornerShape(10.dp))
+            .clickable{onClick()}
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
+            modifier = Modifier.padding(horizontal = 1.dp, vertical = 14.dp),
             text = text,
             style = TextStyle(
                 fontSize = 11.sp,

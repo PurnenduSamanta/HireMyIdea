@@ -67,9 +67,9 @@ fun BodyMetabolicCard(data: WeightTrendsData) {
                 Text(text = data.title, style = InsightsTypography.Body)
                 Text(text = data.subtitle, style = InsightsTypography.BodyMuted)
             }
-            TogglePill(text = "Monthly", selected = data.isMonthlySelected)
+            TogglePill(text = "Monthly", selected = data.isMonthlySelected,{})
             Spacer(modifier = Modifier.width(6.dp))
-            TogglePill(text = "Weekly", selected = !data.isMonthlySelected)
+            TogglePill(text = "Weekly", selected = !data.isMonthlySelected,{})
         }
         Spacer(modifier = Modifier.height(14.dp))
         WeightChart(data = data.chart, modifier = Modifier.fillMaxWidth().height(150.dp))
