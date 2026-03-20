@@ -136,7 +136,7 @@ object InsightsSampleData {
             segments = listOf(
                 Segment("Mood", 30f, InsightsColors.PinkLight),
                 Segment("Bloating", 31f, InsightsColors.Purple),
-                Segment("Fatigue", 21f, InsightsColors.Pink),
+                Segment("Fatigue", 22f, InsightsColors.Pink),
                 Segment("Acne", 17f, InsightsColors.Green)
             )
         ),

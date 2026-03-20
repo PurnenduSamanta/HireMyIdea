@@ -100,7 +100,7 @@ fun BodySignalsCard(data: BodySignalsData) {
         Spacer(modifier = Modifier.height(16.dp))
         SymptomDonut(data = data, modifier = Modifier
             .fillMaxWidth()
-            .height(240.dp))
+            .height(300.dp))
     }
 }
 

@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -45,7 +46,9 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import com.purnendu.hiremyidea.ui.theme.InsightsColors
 import com.purnendu.hiremyidea.ui.theme.InsightsTypography
+import kotlin.math.cos
 import kotlin.math.pow
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 @Composable
@@ -413,46 +416,77 @@ fun SymptomDonut(
     data: BodySignalsData,
     modifier: Modifier = Modifier
 ) {
+    val donutSize = 230.dp
+    val ringWidth = 32.dp
+    val gap = 0f
+    val total = data.segments.sumOf { it.value.toDouble() }.toFloat().coerceAtLeast(1f)
+
+    // Calculate segment start and sweep angles
+    val segmentAngles = buildList {
+        var start = -90f
+        data.segments.forEach { segment ->
+            val sweep = segment.value / total * 360f - gap
+            add(start to sweep)
+            start += sweep + gap
+        }
+    }
+
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        val donutSize = 180.dp
         Canvas(modifier = Modifier.size(donutSize)) {
-            val stroke = Stroke(width = 24.dp.toPx(), cap = StrokeCap.Round)
-            val total = data.segments.sumOf { it.value.toDouble() }.toFloat().coerceAtLeast(1f)
-            val segments = data.segments
-            var startAngle = -90f
-            val gap = 4f
-            segments.forEach { segment ->
-                val sweep = segment.value / total * 360f - gap
+            val strokePx = ringWidth.toPx()
+            val inset = strokePx / 2
+            val arcTopLeft = Offset(inset, inset)
+            val arcSize = androidx.compose.ui.geometry.Size(
+                size.width - inset * 2,
+                size.height - inset * 2
+            )
+
+            val center = Offset(size.width / 2, size.height / 2)
+
+            segmentAngles.forEachIndexed { index, (startAngle, sweepAngle) ->
+                val segment = data.segments[index]
+
+                // Single arc with radial gradient: lighter inside → full color outside
                 drawArc(
-                    color = segment.color,
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            segment.color.copy(alpha = 0.25f),
+                            segment.color
+                        ),
+                        center = center,
+                        radius = size.width / 2
+                    ),
                     startAngle = startAngle,
-                    sweepAngle = sweep,
+                    sweepAngle = sweepAngle,
                     useCenter = false,
-                    style = stroke
+                    style = Stroke(width = strokePx, cap = StrokeCap.Butt),
+                    topLeft = arcTopLeft,
+                    size = arcSize
                 )
-                startAngle += sweep + gap
             }
         }
 
-        val bubbleOffsets = listOf(
-            OffsetSpec((-90).dp, (-40).dp),
-            OffsetSpec(90.dp, (-20).dp),
-            OffsetSpec(60.dp, 80.dp),
-            OffsetSpec((-85).dp, 70.dp)
-        )
+        // Position bubbles outside the ring (not touching inner circle)
+        val bubbleDistance = donutSize / 2 + 12.dp
         data.segments.take(4).forEachIndexed { index, segment ->
-            val offset = bubbleOffsets.getOrNull(index) ?: OffsetSpec(0.dp, 0.dp)
+            val (startAngle, sweepAngle) = segmentAngles[index]
+            val midAngle = startAngle + sweepAngle / 2f
+            val angleRad = Math.toRadians(midAngle.toDouble())
+            val offsetX = (cos(angleRad) * bubbleDistance.value).dp
+            val offsetY = (sin(angleRad) * bubbleDistance.value).dp
+
             SymptomBubble(
-                text = "${segment.value.toInt()}%\\n${segment.label}",
-                offsetX = offset.x,
-                offsetY = offset.y
+                percentage = "${segment.value.toInt()}%",
+                label = segment.label,
+                offsetX = offsetX,
+                offsetY = offsetY
             )
         }
     }
 }
 
 @Composable
-private fun SymptomBubble(text: String, offsetX: Dp, offsetY: Dp) {
+private fun SymptomBubble(percentage: String, label: String, offsetX: Dp, offsetY: Dp) {
     Box(
         modifier = Modifier
             .offset(x = offsetX, y = offsetY)
@@ -461,13 +495,22 @@ private fun SymptomBubble(text: String, offsetX: Dp, offsetY: Dp) {
             .background(Color.White, CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        Text(text = text, style = TextStyle(fontSize = 11.sp, textAlign = TextAlign.Center))
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = percentage,
+                style = TextStyle(color = Color.Black, fontSize = 12.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, textAlign = TextAlign.Center)
+            )
+            Text(
+                text = label,
+                style = TextStyle(color = Color.Black,fontSize = 10.sp, textAlign = TextAlign.Center)
+            )
+        }
     }
 }
 
 @Composable
 fun CycleBar(month: String, value: Int) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier = Modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value.toString(), style = InsightsTypography.AxisBold)
         Spacer(modifier = Modifier.height(4.dp))
         Box(

@@ -20,6 +20,7 @@ class MainActivity : ComponentActivity() {
             HireMyIdeaTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     InsightsScreen()
+                    //AnalogClock()
                 }
             }
         }
